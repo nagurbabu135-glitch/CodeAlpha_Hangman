@@ -1,0 +1,16 @@
+{
+  "name": "hangman-app-root",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Root package config for Vercel backend serverless dependencies installation",
+  "dependencies": {
+    "express": "^4.18.2",
+    "mongoose": "^7.5.0",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "openai": "^4.0.0",
+    "express-validator": "^7.0.1"
+  }
+}
