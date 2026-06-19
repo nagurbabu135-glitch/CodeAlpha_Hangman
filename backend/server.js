@@ -20,24 +20,55 @@ app.use(express.json());
 
 // Database Connection
 const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/hangman';
-mongoose.connect(mongoUri, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => console.log('MongoDB Connected'))
-.catch(err => {
-  console.error('MongoDB Connection Error:', err);
-  // Don't exit on connection error - allow retries
+
+// Cache connection globally to prevent multiple connections in serverless environments
+let cachedDb = global.mongooseCachedDb || null;
+let cachedPromise = global.mongooseCachedPromise || null;
+
+async function connectDb() {
+  if (cachedDb && mongoose.connection.readyState === 1) {
+    return cachedDb;
+  }
+
+  if (!cachedPromise) {
+    console.log('Connecting to MongoDB...');
+    cachedPromise = mongoose.connect(mongoUri, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      bufferCommands: false,
+    }).then((m) => {
+      console.log('MongoDB Connected successfully');
+      cachedDb = m;
+      global.mongooseCachedDb = m;
+      return m;
+    }).catch(err => {
+      cachedPromise = null;
+      global.mongooseCachedPromise = null;
+      throw err;
+    });
+    global.mongooseCachedPromise = cachedPromise;
+  }
+
+  return cachedPromise;
+}
+
+// Start connection attempt asynchronously
+connectDb().catch(err => {
+  console.error('Initial MongoDB Connection Error:', err);
 });
 
 // Database connection health check middleware
-const checkDbConnection = (req, res, next) => {
-  if (mongoose.connection.readyState !== 1) {
+const checkDbConnection = async (req, res, next) => {
+  try {
+    await connectDb();
+    next();
+  } catch (err) {
+    console.error('Database connection middleware error:', err);
     return res.status(503).json({
-      message: 'Database connection is currently unavailable. Please ensure MONGODB_URI environment variable is configured in Vercel settings.'
+      message: 'Database connection is currently unavailable. Please ensure MONGODB_URI environment variable is configured in Vercel settings.',
+      error: err.message
     });
   }
-  next();
 };
 
 // Routes
