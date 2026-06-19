@@ -30,9 +30,19 @@ mongoose.connect(mongoUri, {
   // Don't exit on connection error - allow retries
 });
 
+// Database connection health check middleware
+const checkDbConnection = (req, res, next) => {
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(503).json({
+      message: 'Database connection is currently unavailable. Please ensure MONGODB_URI environment variable is configured in Vercel settings.'
+    });
+  }
+  next();
+};
+
 // Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/game', gameRoutes);
+app.use('/api/auth', checkDbConnection, authRoutes);
+app.use('/api/game', checkDbConnection, gameRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
