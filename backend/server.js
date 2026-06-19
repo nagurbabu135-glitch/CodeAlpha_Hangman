@@ -19,7 +19,7 @@ app.use(cors());
 app.use(express.json());
 
 // Database Connection
-const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/hangman';
+const mongoUri = process.env.MONGODB_URI;
 
 // Cache connection globally to prevent multiple connections in serverless environments
 let cachedDb = global.mongooseCachedDb || null;
@@ -30,12 +30,19 @@ async function connectDb() {
     return cachedDb;
   }
 
+  const uri = mongoUri || 'mongodb://localhost:27017/hangman';
+
+  if (process.env.VERCEL && !mongoUri) {
+    throw new Error('MONGODB_URI environment variable is missing in Vercel settings.');
+  }
+
   if (!cachedPromise) {
     console.log('Connecting to MongoDB...');
-    cachedPromise = mongoose.connect(mongoUri, {
+    cachedPromise = mongoose.connect(uri, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
       bufferCommands: false,
+      serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
     }).then((m) => {
       console.log('MongoDB Connected successfully');
       cachedDb = m;

@@ -37,7 +37,10 @@ function Login() {
       
       navigate('/game');
     } catch (err) {
-      setError(err.response?.data?.message || 'An error occurred');
+      console.error('Login/Register Error:', err);
+      const serverMessage = err.response?.data?.message || err.response?.data?.error;
+      const statusText = err.response?.status ? ` (Status ${err.response.status})` : '';
+      setError(serverMessage ? `${serverMessage}${statusText}` : `${err.message}${statusText}`);
     } finally {
       setLoading(false);
     }
