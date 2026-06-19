@@ -40,7 +40,12 @@ function Game() {
       setMessage('');
       setHint('');
     } catch (error) {
-      setMessage('Failed to start game');
+      console.error('Failed to start game:', error);
+      if (error.response?.status === 401) {
+        handleLogout();
+      } else {
+        setMessage(error.response?.data?.message || 'Failed to start game');
+      }
     } finally {
       setLoading(false);
     }
@@ -110,7 +115,30 @@ function Game() {
   };
 
   if (!game) {
-    return <div className="loading">Loading...</div>;
+    return (
+      <div className="game-container">
+        <div className="game-card">
+          <div className="game-header">
+            <h1>Hangman</h1>
+          </div>
+          {message ? (
+            <div className="error-screen" style={{ textAlign: 'center', padding: '20px' }}>
+              <div className="message error" style={{ marginBottom: '20px' }}>{message}</div>
+              <button onClick={startNewGame} className="new-game-btn" style={{ width: '100%' }}>
+                Retry Start Game
+              </button>
+              <button onClick={handleLogout} className="logout-btn" style={{ width: '100%', marginTop: '10px' }}>
+                Back to Login
+              </button>
+            </div>
+          ) : (
+            <div className="loading" style={{ textAlign: 'center', padding: '40px', fontSize: '1.2rem', color: '#fff' }}>
+              Loading...
+            </div>
+          )}
+        </div>
+      </div>
+    );
   }
 
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');

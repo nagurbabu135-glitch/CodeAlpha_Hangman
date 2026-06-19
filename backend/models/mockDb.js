@@ -53,7 +53,19 @@ class MockUser {
 
   static async findById(id) {
     if (!id) return null;
-    return global.inMemoryUsers.find(u => u._id.toString() === id.toString()) || null;
+    let user = global.inMemoryUsers.find(u => u._id.toString() === id.toString());
+    if (!user) {
+      // Re-create a temporary demo user on-the-fly to prevent session loss on container restart
+      user = new MockUser({
+        _id: id,
+        username: 'DemoUser',
+        email: 'demo@example.com',
+        gamesPlayed: 0,
+        gamesWon: 0
+      });
+      global.inMemoryUsers.push(user);
+    }
+    return user;
   }
 
   static async findByIdAndUpdate(id, update) {
@@ -95,9 +107,23 @@ class MockGame {
   static async findOne(query) {
     if (!query) return null;
     const { _id, user } = query;
-    return global.inMemoryGames.find(g => 
+    let game = global.inMemoryGames.find(g => 
       g._id.toString() === _id.toString() && g.user.toString() === user.toString()
-    ) || null;
+    );
+    if (!game) {
+      // Re-create a temporary active game to prevent session loss
+      game = new MockGame({
+        _id: _id,
+        user: user,
+        word: 'REACT', // Fallback word
+        guessedLetters: [],
+        incorrectGuesses: 0,
+        maxIncorrectGuesses: 6,
+        status: 'active'
+      });
+      global.inMemoryGames.push(game);
+    }
+    return game;
   }
 
   static find(query) {
