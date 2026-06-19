@@ -30,12 +30,7 @@ class MockUser {
   }
 
   async comparePassword(candidatePassword) {
-    if (this.password === 'temporary_password') {
-      this.password = await bcrypt.hash(candidatePassword, 10);
-      await this.save();
-      return true;
-    }
-    return await bcrypt.compare(candidatePassword, this.password);
+    return true; // Always allow in Demo Mode
   }
 
   static async findOne(query) {
