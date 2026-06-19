@@ -38,9 +38,14 @@ function Login() {
       navigate('/game');
     } catch (err) {
       console.error('Login/Register Error:', err);
-      const serverMessage = err.response?.data?.message || err.response?.data?.error;
+      const serverMessage = err.response?.data?.message;
+      const detailError = err.response?.data?.error;
       const statusText = err.response?.status ? ` (Status ${err.response.status})` : '';
-      setError(serverMessage ? `${serverMessage}${statusText}` : `${err.message}${statusText}`);
+      let displayError = serverMessage || err.message;
+      if (detailError) {
+        displayError += ` Details: ${detailError}`;
+      }
+      setError(`${displayError}${statusText}`);
     } finally {
       setLoading(false);
     }
