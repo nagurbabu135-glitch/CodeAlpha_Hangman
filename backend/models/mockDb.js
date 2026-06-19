@@ -30,13 +30,18 @@ class MockUser {
   }
 
   async comparePassword(candidatePassword) {
+    if (this.password === 'temporary_password') {
+      this.password = await bcrypt.hash(candidatePassword, 10);
+      await this.save();
+      return true;
+    }
     return await bcrypt.compare(candidatePassword, this.password);
   }
 
   static async findOne(query) {
     if (!query) return null;
     const { email, username, $or } = query;
-    const found = global.inMemoryUsers.find(u => {
+    let found = global.inMemoryUsers.find(u => {
       if (email && u.email === email) return true;
       if (username && u.username === username) return true;
       if ($or) {
@@ -48,6 +53,18 @@ class MockUser {
       }
       return false;
     });
+
+    // Auto-register user on login in Demo Mode if they don't exist yet
+    if (!found && email && !username && !$or) {
+      const mockUsername = email.split('@')[0] || 'Player';
+      found = new MockUser({
+        username: mockUsername,
+        email: email,
+        password: 'temporary_password'
+      });
+      await found.save();
+    }
+
     return found || null;
   }
 
