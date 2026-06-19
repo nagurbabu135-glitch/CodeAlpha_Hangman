@@ -63,8 +63,13 @@ class MockUser {
     return found || null;
   }
 
-  static async findById(id) {
-    if (!id) return null;
+  static findById(id) {
+    if (!id) {
+      return {
+        select: () => this,
+        then: (resolve) => resolve(null)
+      };
+    }
     let user = global.inMemoryUsers.find(u => u._id.toString() === id.toString());
     if (!user) {
       // Re-create a temporary demo user on-the-fly to prevent session loss on container restart
@@ -77,7 +82,13 @@ class MockUser {
       });
       global.inMemoryUsers.push(user);
     }
-    return user;
+    const chain = {
+      select: () => chain,
+      then: (resolve) => {
+        resolve(user);
+      }
+    };
+    return chain;
   }
 
   static async findByIdAndUpdate(id, update) {
