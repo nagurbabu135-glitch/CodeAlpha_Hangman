@@ -20,21 +20,30 @@ app.use(express.json());
 
 // Database Connection
 const mongoUri = process.env.MONGODB_URI;
+const isDemoMode = !mongoUri;
+
+if (isDemoMode) {
+  console.log('--------------------------------------------------');
+  console.log('WARNING: MONGODB_URI is not set!');
+  console.log('Running in In-Memory Demo Mode.');
+  console.log('Data will reset when the server restarts/spins down.');
+  console.log('--------------------------------------------------');
+}
 
 // Cache connection globally to prevent multiple connections in serverless environments
 let cachedDb = global.mongooseCachedDb || null;
 let cachedPromise = global.mongooseCachedPromise || null;
 
 async function connectDb() {
+  if (isDemoMode) {
+    return null;
+  }
+
   if (cachedDb && mongoose.connection.readyState === 1) {
     return cachedDb;
   }
 
-  const uri = mongoUri || 'mongodb://localhost:27017/hangman';
-
-  if (process.env.VERCEL && !mongoUri) {
-    throw new Error('MONGODB_URI environment variable is missing in Vercel settings.');
-  }
+  const uri = mongoUri;
 
   if (!cachedPromise) {
     console.log('Connecting to MongoDB...');
@@ -59,13 +68,19 @@ async function connectDb() {
   return cachedPromise;
 }
 
-// Start connection attempt asynchronously
-connectDb().catch(err => {
-  console.error('Initial MongoDB Connection Error:', err);
-});
+// Start connection attempt asynchronously if not in demo mode
+if (!isDemoMode) {
+  connectDb().catch(err => {
+    console.error('Initial MongoDB Connection Error:', err);
+  });
+}
 
 // Database connection health check middleware
 const checkDbConnection = async (req, res, next) => {
+  if (isDemoMode) {
+    return next(); // Skip DB checks and allow requests in Demo Mode
+  }
+
   try {
     await connectDb();
     next();
