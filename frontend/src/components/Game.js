@@ -143,19 +143,85 @@ function Game() {
 
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
-  // Hangman diagram based on incorrect guesses
-  const getHangmanDiagram = (incorrect) => {
-    const stages = [
-      '', // 0 incorrect
-      '  +---+\n  |   |\n      |\n      |\n      |\n      |\n=========', // 1
-      '  +---+\n  |   |\n  O   |\n      |\n      |\n      |\n=========', // 2
-      '  +---+\n  |   |\n  O   |\n  |   |\n      |\n      |\n=========', // 3
-      '  +---+\n  |   |\n  O   |\n /|   |\n      |\n      |\n=========', // 4
-      '  +---+\n  |   |\n  O   |\n /|\\  |\n      |\n      |\n=========', // 5
-      '  +---+\n  |   |\n  O   |\n /|\\  |\n /    |\n      |\n=========', // 6
-      '  +---+\n  |   |\n  O   |\n /|\\  |\n / \\  |\n      |\n=========', // 7 (game over)
-    ];
-    return stages[incorrect] || stages[6];
+  // Hangman diagram based on incorrect guesses (SVG implementation with animations)
+  const renderHangmanSVG = (incorrect) => {
+    return (
+      <svg width="200" height="250" viewBox="0 0 200 250" className="hangman-svg">
+        {/* Gallows post and beams */}
+        <line x1="20" y1="230" x2="180" y2="230" className="gallows-base" />
+        <line x1="60" y1="230" x2="60" y2="20" className="gallows-post" />
+        <line x1="60" y1="20" x2="140" y2="20" className="gallows-beam" />
+        <line x1="60" y1="60" x2="100" y2="20" className="gallows-support" />
+        <line x1="140" y1="20" x2="140" y2="50" className="gallows-rope" />
+
+        {/* The Man */}
+        <g className={`hangman-man ${game.status === 'lost' ? 'swinging' : ''}`}>
+          {/* Head */}
+          <circle 
+            cx="140" 
+            cy="65" 
+            r="15" 
+            className={`hangman-part head ${incorrect >= 1 ? 'visible' : ''}`} 
+          />
+          {/* Body */}
+          <line 
+            x1="140" 
+            y1="80" 
+            x2="140" 
+            y2="135" 
+            className={`hangman-part body ${incorrect >= 2 ? 'visible' : ''}`} 
+          />
+          {/* Left Arm */}
+          <line 
+            x1="140" 
+            y1="95" 
+            x2="115" 
+            y2="115" 
+            className={`hangman-part left-arm ${incorrect >= 3 ? 'visible' : ''}`} 
+          />
+          {/* Right Arm */}
+          <line 
+            x1="140" 
+            y1="95" 
+            x2="165" 
+            y2="115" 
+            className={`hangman-part right-arm ${incorrect >= 4 ? 'visible' : ''}`} 
+          />
+          {/* Left Leg */}
+          <line 
+            x1="140" 
+            y1="135" 
+            x2="120" 
+            y2="180" 
+            className={`hangman-part left-leg ${incorrect >= 5 ? 'visible' : ''}`} 
+          />
+          {/* Right Leg */}
+          <line 
+            x1="140" 
+            y1="135" 
+            x2="160" 
+            y2="180" 
+            className={`hangman-part right-leg ${incorrect >= 6 ? 'visible' : ''}`} 
+          />
+          
+          {/* Sad eyes/face on Game Over */}
+          {incorrect >= 6 && (
+            <g className="hangman-face">
+              {/* Left eye x */}
+              <line x1="134" y1="61" x2="138" y2="65" stroke="#e74c3c" strokeWidth="2" strokeLinecap="round" />
+              <line x1="138" y1="61" x2="134" y2="65" stroke="#e74c3c" strokeWidth="2" strokeLinecap="round" />
+              
+              {/* Right eye x */}
+              <line x1="142" y1="61" x2="146" y2="65" stroke="#e74c3c" strokeWidth="2" strokeLinecap="round" />
+              <line x1="146" y1="61" x2="142" y2="65" stroke="#e74c3c" strokeWidth="2" strokeLinecap="round" />
+              
+              {/* Frown */}
+              <path d="M 136 73 Q 140 69 144 73" stroke="#e74c3c" strokeWidth="2" fill="none" strokeLinecap="round" />
+            </g>
+          )}
+        </g>
+      </svg>
+    );
   };
 
   return (
@@ -174,7 +240,7 @@ function Game() {
         )}
         
         <div className="hangman-diagram">
-          <pre>{getHangmanDiagram(game.incorrectGuesses)}</pre>
+          {renderHangmanSVG(game.incorrectGuesses)}
         </div>
         
         <div className="word-display">

@@ -56,17 +56,109 @@
   display: flex;
   justify-content: center;
   margin: 20px 0;
-  background: #f5f5f5;
+  background: #f8f9fa;
   padding: 20px;
-  border-radius: 8px;
+  border-radius: 12px;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
-.hangman-diagram pre {
-  font-family: 'Courier New', monospace;
-  font-size: 16px;
-  line-height: 1.2;
-  color: #333;
-  margin: 0;
+.hangman-svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Base styles for the gallows paths */
+.gallows-base,
+.gallows-post,
+.gallows-beam,
+.gallows-support {
+  stroke: #2c3e50;
+  stroke-width: 6px;
+  stroke-linecap: round;
+  fill: none;
+}
+
+.gallows-rope {
+  stroke: #d35400;
+  stroke-width: 4px;
+  stroke-linecap: round;
+  fill: none;
+}
+
+/* Hangman body parts */
+.hangman-part {
+  stroke: #2c3e50;
+  stroke-width: 4px;
+  fill: none;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
+              transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.hangman-part.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Individual transform origins for joints */
+.hangman-part.head {
+  transform-origin: 140px 65px;
+}
+
+.hangman-part.body {
+  transform-origin: 140px 80px;
+}
+
+.hangman-part.left-arm {
+  transform-origin: 140px 95px;
+}
+
+.hangman-part.right-arm {
+  transform-origin: 140px 95px;
+}
+
+.hangman-part.left-leg {
+  transform-origin: 140px 135px;
+}
+
+.hangman-part.right-leg {
+  transform-origin: 140px 135px;
+}
+
+/* Swinging animation for the whole man when lost */
+.hangman-man.swinging {
+  transform-origin: 140px 50px; /* Pivots from where the rope meets the head */
+  animation: swing 2.5s ease-in-out infinite;
+}
+
+@keyframes swing {
+  0% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(4deg);
+  }
+  75% {
+    transform: rotate(-4deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+/* Face lines transition */
+.hangman-face {
+  animation: fadeIn 0.8s ease-in-out forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .word-display {
