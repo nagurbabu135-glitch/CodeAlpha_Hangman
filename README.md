@@ -28,61 +28,128 @@ A full-stack Hangman game with authentication, MongoDB database, and AI-powered 
 
 ## System Architecture
 
-The application follows a modern decoupled Client-Server (REST API) architecture with hybrid serverless capability and dual database engines.
+The Hangman Application is engineered using a decoupled, event-driven Client-Server architecture optimized for enterprise reliability, low latency, and zero-configuration demonstration fallback.
+
+### High-Level Component Topology
 
 ```mermaid
 graph TD
-    subgraph Frontend ["Frontend Tier (React SPA)"]
-        UI["React UI Components"]
-        AuthView["Login / Register View"]
-        GameView["Interactive Game View (SVG + Virtual Keyboard)"]
-        Axios["Axios HTTP Client"]
-        LocalStorage["Browser LocalStorage (JWT Token)"]
-        
-        UI --> AuthView
-        UI --> GameView
-        AuthView --> Axios
-        GameView --> Axios
-        AuthView --> LocalStorage
+    %% Custom Styling Definitions
+    classDef clientStyle fill:#1e1e2e,stroke:#89b4fa,stroke-width:2px,color:#cdd6f4;
+    classDef serverStyle fill:#181825,stroke:#f9e2af,stroke-width:2px,color:#cdd6f4;
+    classDef aiStyle fill:#313244,stroke:#a6e3a1,stroke-width:2px,color:#cdd6f4;
+    classDef dbStyle fill:#181825,stroke:#fab387,stroke-width:2px,color:#cdd6f4;
+    classDef fallbackStyle fill:#45475a,stroke:#f38ba8,stroke-width:2px,color:#cdd6f4,stroke-dasharray: 5 5;
+
+    subgraph Client ["Client Presentation Tier (React SPA)"]
+        UI["React 18 SPA Engine"]:::clientStyle
+        AuthComp["Auth Module (Login / Register)"]:::clientStyle
+        GameComp["Game View (SVG Canvas + Virtual Keyboard)"]:::clientStyle
+        HttpClient["Axios Engine (Bearer Interceptor)"]:::clientStyle
+        SessionStore[("Browser LocalStorage - JWT Token")]:::clientStyle
+
+        UI --> AuthComp
+        UI --> GameComp
+        AuthComp --> HttpClient
+        GameComp --> HttpClient
+        AuthComp -. Store Token .-> SessionStore
     end
 
-    subgraph Backend ["Backend Tier (Express REST API)"]
-        Server["Express Server (server.js / api/index.js)"]
-        AuthMiddleware["JWT Auth Middleware"]
-        DbCheckMiddleware["DB Connection Health Check"]
-        AuthRouter["Auth Router (/api/auth)"]
-        GameRouter["Game Router (/api/game)"]
-        
-        Server --> AuthMiddleware
-        Server --> DbCheckMiddleware
-        DbCheckMiddleware --> AuthRouter
-        DbCheckMiddleware --> GameRouter
+    subgraph API ["Application API Server (Express Engine / Vercel Serverless)"]
+        Gateway["Express Server Router (server.js / api/index.js)"]:::serverStyle
+        MiddlewareChain["Middleware Pipeline (CORS, JSON Parser)"]:::serverStyle
+        JWTAuth["JWT Authentication Guard"]:::serverStyle
+        HealthCheck["Database Connection Health Sentinel"]:::serverStyle
+        AuthRoutes["Auth Controller (/api/auth)"]:::serverStyle
+        GameRoutes["Game Controller (/api/game)"]:::serverStyle
+
+        Gateway --> MiddlewareChain
+        MiddlewareChain --> HealthCheck
+        HealthCheck --> JWTAuth
+        JWTAuth --> AuthRoutes
+        JWTAuth --> GameRoutes
     end
 
-    subgraph External ["External Services"]
-        OpenAI["OpenAI API (GPT-3.5 Turbo)"]
+    subgraph External ["AI Intelligence Provider"]
+        OpenAI["OpenAI API Service (GPT-3.5 Turbo)"]:::aiStyle
     end
 
-    subgraph Data ["Data Storage Layer"]
-        MongoDB[("MongoDB Database")]
-        MockDB[("In-Memory Demo Database (Fallback)")]
+    subgraph Persistence ["Persistence Layer Engine"]
+        MongoDB[("Primary Storage: MongoDB Atlas / Community")]:::dbStyle
+        MockDB[("In-Memory Demo Storage: MockDB Instance")]:::fallbackStyle
     end
 
-    Axios -- "HTTP REST Requests (Bearer Token)" --> Server
-    GameRouter -- "Generate Intelligent Hints" --> OpenAI
-    AuthRouter & GameRouter -- "Primary Storage" --> MongoDB
-    AuthRouter & GameRouter -- "Fallback Storage (No MONGODB_URI)" --> MockDB
+    HttpClient == "HTTPS REST API (JWT Bearer Token)" ==> Gateway
+    GameRoutes == "Async OpenAI Prompt Pipeline" ==> OpenAI
+    
+    HealthCheck -- "MONGODB_URI Active" --> MongoDB
+    HealthCheck -. "MONGODB_URI Omitted (Demo Mode)" .-> MockDB
+    
+    AuthRoutes & GameRoutes --> MongoDB
+    AuthRoutes & GameRoutes -. "Fallback Operations" .-> MockDB
+```
+
+### End-to-End Sequence & Intelligence Fallback Workflow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Player / Client UI
+    participant React as React SPA
+    participant Express as Express API Gateway
+    participant Guard as JWT Auth & Sentinel
+    participant OpenAI as OpenAI GPT-3.5 API
+    participant DB as Storage Engine (Mongo / MockDB)
+
+    rect rgb(30, 30, 46)
+        note right of User: Authentication Flow
+        User->>React: Submit Credentials (email, password)
+        React->>Express: POST /api/auth/login
+        Express->>DB: Query User & Verify Hash (bcryptjs)
+        DB-->>Express: Return User Object
+        Express->>React: 200 OK + Signed JWT Token
+        React->>User: Store JWT in LocalStorage & Render Game Dashboard
+    end
+
+    rect rgb(24, 24, 37)
+        note right of User: Interactive Gameplay Loop
+        User->>React: Press Key / Input Guess (e.g. 'A')
+        React->>Express: POST /api/game/guess (Headers: Bearer <Token>)
+        Express->>Guard: Validate Bearer Token
+        Guard-->>Express: Inject Authenticated User Context
+        Express->>DB: Fetch Active Game State by Game ID
+        DB-->>Express: Active Game Entity
+        Express->>Express: Evaluate Guess & Calculate Win/Loss/Remaining Lives
+        Express->>DB: Update Game State & Incremental Stats
+        Express->>React: Return Masked Word State & Guess Result
+        React->>User: Animate SVG Hangman & Enable/Disable Keyboard Keys
+    end
+
+    rect rgb(49, 50, 68)
+        note right of User: AI Hint & Resilience Fallback Flow
+        User->>React: Click 'Get AI Hint'
+        React->>Express: POST /api/game/hint (Bearer Token)
+        alt OpenAI API Key Present & Healthy
+            Express->>OpenAI: Request Hint (State, Guessed Letters, Lives)
+            OpenAI-->>Express: Subtle Text Hint Response
+        else OpenAI API Key Missing or Service Rate Limited
+            Express->>Express: Execute Local Pattern Heuristic (Vowels/Word Bounds)
+        end
+        Express->>DB: Append Hint to Game Document
+        Express->>React: Return Formatted Hint String
+        React->>User: Render Hint Banner
+    end
 ```
 
 ### Architectural Highlights
 
 - **Dual Database Engine (Zero-Config Demo Mode)**:
-  - When `MONGODB_URI` is supplied, data is persisted via MongoDB & Mongoose.
-  - When `MONGODB_URI` is omitted, the app dynamically uses an in-memory database adapter (`mockDb.js`), allowing instant testing without database setup.
-- **Resilient AI Hint System**:
-  - Leverages OpenAI GPT-3.5 Turbo for generating context-aware gameplay hints.
-  - Features an automated fallback heuristic that provides vowel/pattern hints if OpenAI API keys are absent or fail.
-- **Hybrid Cloud & Local Support**:
+  - When `MONGODB_URI` is supplied, data is persisted via MongoDB & Mongoose ORM.
+  - When `MONGODB_URI` is omitted, the app dynamically routes through an in-memory database adapter (`mockDb.js`), allowing instant execution without database setup.
+- **Resilient AI Hint Engine**:
+  - Leverages OpenAI GPT-3.5 Turbo for generating subtle gameplay hints.
+  - Features an automated fallback heuristic that provides vowel/pattern hints if OpenAI API keys are absent or rate-limited.
+- **Hybrid Cloud & Local Hosting**:
   - Express server architecture supporting Docker containers, traditional hosting, and Vercel Serverless Functions (`api/index.js`).
 - **Stateless Authentication**:
   - Secure password hashing using `bcryptjs`.
