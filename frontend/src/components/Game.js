@@ -15,6 +15,11 @@ const getApiUrl = () => {
 
 const API_URL = getApiUrl();
 
+const WORDS = [
+  'PYTHON', 'JAVASCRIPT', 'REACT', 'MONGODB', 'EXPRESS',
+  'NODEJS', 'FRONTEND', 'BACKEND', 'DATABASE', 'AUTHENTICATION'
+];
+
 function Game() {
   const [game, setGame] = useState(null);
   const [letter, setLetter] = useState('');
@@ -42,27 +47,78 @@ function Game() {
     startNewGame();
   }, [navigate]);
 
+  const startClientDemoGame = () => {
+    const word = WORDS[Math.floor(Math.random() * WORDS.length)];
+    const newGame = {
+      gameId: 'client_' + Date.now(),
+      word: word,
+      wordLength: word.length,
+      maxIncorrectGuesses: 6,
+      guessedLetters: [],
+      incorrectGuesses: 0,
+      status: 'active',
+      wordState: '_ '.repeat(word.length).trim(),
+      isClientDemo: true
+    };
+    setGame(newGame);
+    setMessage('');
+    setHint('');
+  };
+
   const startNewGame = async () => {
+    if (localStorage.getItem('isClientDemo') === 'true') {
+      startClientDemoGame();
+      return;
+    }
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
       const response = await axios.post(
         `${API_URL}/game/start`,
         {},
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` }, timeout: 4000 }
       );
       setGame(response.data);
       setMessage('');
       setHint('');
     } catch (error) {
-      console.error('Failed to start game:', error);
-      if (error.response?.status === 401) {
-        handleLogout();
-      } else {
-        setMessage(error.response?.data?.message || 'Failed to start game');
-      }
+      console.error('Failed to start game via API, falling back to client demo:', error);
+      startClientDemoGame();
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleClientDemoGuess = (upperLetter) => {
+    if (!game || game.status !== 'active') return;
+    if (game.guessedLetters.includes(upperLetter)) return;
+    
+    const newGuessed = [...game.guessedLetters, upperLetter];
+    const isCorrect = game.word.includes(upperLetter);
+    const newIncorrect = isCorrect ? game.incorrectGuesses : game.incorrectGuesses + 1;
+    
+    const wordLetters = game.word.split('');
+    const allGuessed = wordLetters.every(l => newGuessed.includes(l));
+    const status = allGuessed ? 'won' : newIncorrect >= game.maxIncorrectGuesses ? 'lost' : 'active';
+    
+    const wordState = wordLetters.map(l => newGuessed.includes(l) ? l : '_').join(' ');
+    
+    setGame({
+      ...game,
+      guessedLetters: newGuessed,
+      incorrectGuesses: newIncorrect,
+      status,
+      wordState,
+      word: status !== 'active' ? game.word : undefined
+    });
+    setLetter('');
+
+    if (status === 'won') {
+      setMessage('🎉 You won!');
+      updateClientUserStats(true);
+    } else if (status === 'lost') {
+      setMessage(`😢 Game over! The word was: ${game.word}`);
+      updateClientUserStats(false);
     }
   };
 
@@ -70,13 +126,19 @@ function Game() {
     if (e) e.preventDefault();
     const targetLetter = letterOverride || letter;
     if (!targetLetter || !game || game.status !== 'active') return;
+    const upperLetter = targetLetter.toUpperCase();
+
+    if (game.isClientDemo || localStorage.getItem('isClientDemo') === 'true') {
+      handleClientDemoGuess(upperLetter);
+      return;
+    }
 
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
         `${API_URL}/game/guess`,
-        { gameId: game.gameId, letter: targetLetter },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { gameId: game.gameId, letter: upperLetter },
+        { headers: { Authorization: `Bearer ${token}` }, timeout: 4000 }
       );
       
       setGame({ ...game, ...response.data });
@@ -90,14 +152,18 @@ function Game() {
         updateUserStats();
       }
     } catch (error) {
-      setMessage(error.response?.data?.message || 'Invalid guess');
+      if (!error.response || error.message === 'Network Error') {
+        handleClientDemoGuess(upperLetter);
+      } else {
+        setMessage(error.response?.data?.message || 'Invalid guess');
+      }
     }
   };
 
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (!game || game.status !== 'active') return;
-      if (e.target.tagName === 'INPUT') return; // Allow normal typing in input
+      if (e.target.tagName === 'INPUT') return;
       const key = e.key.toUpperCase();
       if (/^[A-Z]$/.test(key) && !game.guessedLetters?.includes(key)) {
         handleGuess(null, key);
@@ -111,20 +177,48 @@ function Game() {
   const getHint = async () => {
     if (!game) return;
     
+    if (game.isClientDemo || localStorage.getItem('isClientDemo') === 'true') {
+      const word = game.word || 'HANGMAN';
+      const unguessedLetters = word.split('').filter(l => !game.guessedLetters.includes(l));
+      const vowels = ['A', 'E', 'I', 'O', 'U'];
+      const unguessedVowels = unguessedLetters.filter(l => vowels.includes(l));
+      const hints = [];
+      if (!game.guessedLetters.includes(word[0])) hints.push(`The word starts with "${word[0]}"`);
+      if (!game.guessedLetters.includes(word[word.length - 1])) hints.push(`The word ends with "${word[word.length - 1]}"`);
+      if (unguessedVowels.length > 0) hints.push(`Try guessing a vowel (${unguessedVowels.join(', ')})`);
+      hints.push(`The word has ${word.length} letters`);
+      hints.push(`Think about software engineering and technology terms`);
+      const selectedHint = hints[Math.floor(Math.random() * hints.length)];
+      setHint(selectedHint);
+      return;
+    }
+
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
         `${API_URL}/game/hint`,
         { gameId: game.gameId },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` }, timeout: 4000 }
       );
       setHint(response.data.hint);
     } catch (error) {
-      setMessage('Failed to get hint');
+      setHint("Think about technology and programming terms.");
     }
   };
 
+  const updateClientUserStats = (isWin) => {
+    if (!user) return;
+    const updatedUser = {
+      ...user,
+      gamesPlayed: (user.gamesPlayed || 0) + 1,
+      gamesWon: isWin ? (user.gamesWon || 0) + 1 : (user.gamesWon || 0)
+    };
+    setUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+  };
+
   const updateUserStats = async () => {
+    if (localStorage.getItem('isClientDemo') === 'true') return;
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
