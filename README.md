@@ -26,6 +26,68 @@ A full-stack Hangman game with authentication, MongoDB database, and AI-powered 
 - Axios for API calls
 - CSS for styling
 
+## System Architecture
+
+The application follows a modern decoupled Client-Server (REST API) architecture with hybrid serverless capability and dual database engines.
+
+```mermaid
+graph TD
+    subgraph Frontend ["Frontend Tier (React SPA)"]
+        UI["React UI Components"]
+        AuthView["Login / Register View"]
+        GameView["Interactive Game View (SVG + Virtual Keyboard)"]
+        Axios["Axios HTTP Client"]
+        LocalStorage["Browser LocalStorage (JWT Token)"]
+        
+        UI --> AuthView
+        UI --> GameView
+        AuthView --> Axios
+        GameView --> Axios
+        AuthView --> LocalStorage
+    end
+
+    subgraph Backend ["Backend Tier (Express REST API)"]
+        Server["Express Server (server.js / api/index.js)"]
+        AuthMiddleware["JWT Auth Middleware"]
+        DbCheckMiddleware["DB Connection Health Check"]
+        AuthRouter["Auth Router (/api/auth)"]
+        GameRouter["Game Router (/api/game)"]
+        
+        Server --> AuthMiddleware
+        Server --> DbCheckMiddleware
+        DbCheckMiddleware --> AuthRouter
+        DbCheckMiddleware --> GameRouter
+    end
+
+    subgraph External ["External Services"]
+        OpenAI["OpenAI API (GPT-3.5 Turbo)"]
+    end
+
+    subgraph Data ["Data Storage Layer"]
+        MongoDB[("MongoDB Database")]
+        MockDB[("In-Memory Demo Database (Fallback)")]
+    end
+
+    Axios -- "HTTP REST Requests (Bearer Token)" --> Server
+    GameRouter -- "Generate Intelligent Hints" --> OpenAI
+    AuthRouter & GameRouter -- "Primary Storage" --> MongoDB
+    AuthRouter & GameRouter -- "Fallback Storage (No MONGODB_URI)" --> MockDB
+```
+
+### Architectural Highlights
+
+- **Dual Database Engine (Zero-Config Demo Mode)**:
+  - When `MONGODB_URI` is supplied, data is persisted via MongoDB & Mongoose.
+  - When `MONGODB_URI` is omitted, the app dynamically uses an in-memory database adapter (`mockDb.js`), allowing instant testing without database setup.
+- **Resilient AI Hint System**:
+  - Leverages OpenAI GPT-3.5 Turbo for generating context-aware gameplay hints.
+  - Features an automated fallback heuristic that provides vowel/pattern hints if OpenAI API keys are absent or fail.
+- **Hybrid Cloud & Local Support**:
+  - Express server architecture supporting Docker containers, traditional hosting, and Vercel Serverless Functions (`api/index.js`).
+- **Stateless Authentication**:
+  - Secure password hashing using `bcryptjs`.
+  - JWT token validation attached via HTTP `Authorization: Bearer <token>` headers.
+
 ## Prerequisites
 
 - Node.js (v14 or higher)
