@@ -6,7 +6,7 @@ import './Game.css';
 const getApiUrl = () => {
   if (typeof window !== 'undefined') {
     const { port, hostname, protocol } = window.location;
-    if (port === '3000' || port === '3001') {
+    if (port && port !== '5000') {
       return `${protocol}//${hostname}:5000/api`;
     }
   }

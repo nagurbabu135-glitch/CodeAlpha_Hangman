@@ -6,7 +6,8 @@ import './Login.css';
 const getApiUrl = () => {
   if (typeof window !== 'undefined') {
     const { port, hostname, protocol } = window.location;
-    if (port === '3000' || port === '3001') {
+    // If running on any local port other than backend port 5000 (e.g. 3000, 3001, 5001, 8080, etc.), route to backend port 5000
+    if (port && port !== '5000') {
       return `${protocol}//${hostname}:5000/api`;
     }
   }
@@ -58,7 +59,11 @@ function Login() {
         displayError = validationErrors.map(v => `${v.path || v.param || 'field'}: ${v.msg}`).join(', ');
       }
       if (!displayError) {
-        displayError = err.message || 'An unexpected error occurred';
+        if (err.message === 'Network Error' || !err.response) {
+          displayError = 'Cannot connect to backend server. Please verify backend is running on port 5000.';
+        } else {
+          displayError = err.message || 'An unexpected error occurred';
+        }
       }
       if (detailError) {
         displayError += ` Details: ${detailError}`;
