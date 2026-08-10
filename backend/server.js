@@ -95,10 +95,12 @@ const checkDbConnection = async (req, res, next) => {
 
 // Routes
 app.use('/api/auth', checkDbConnection, authRoutes);
+app.use('/auth', checkDbConnection, authRoutes);
 app.use('/api/game', checkDbConnection, gameRoutes);
+app.use('/game', checkDbConnection, gameRoutes);
 
 // Health check
-app.get('/api/health', (req, res) => {
+app.get(['/api/health', '/health'], (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 

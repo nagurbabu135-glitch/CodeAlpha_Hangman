@@ -15,7 +15,8 @@ router.post('/register', [
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      const msg = errors.array().map(e => `${e.path || e.param}: ${e.msg}`).join(', ');
+      return res.status(400).json({ message: msg, errors: errors.array() });
     }
 
     const { username, email, password } = req.body;
@@ -53,7 +54,8 @@ router.post('/login', [
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      const msg = errors.array().map(e => `${e.path || e.param}: ${e.msg}`).join(', ');
+      return res.status(400).json({ message: msg, errors: errors.array() });
     }
 
     const { email, password } = req.body;

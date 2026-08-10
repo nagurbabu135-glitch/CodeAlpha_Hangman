@@ -35,12 +35,15 @@ class MockUser {
 
   static async findOne(query) {
     if (!query) return null;
-    const { email, username, $or } = query;
+    const { _id, email, username, $or } = query;
     let found = global.inMemoryUsers.find(u => {
+      if (!u) return false;
+      if (_id && u._id && u._id.toString() === _id.toString()) return true;
       if (email && u.email === email) return true;
       if (username && u.username === username) return true;
-      if ($or) {
+      if ($or && Array.isArray($or)) {
         return $or.some(q => {
+          if (q._id && u._id && u._id.toString() === q._id.toString()) return true;
           if (q.email && u.email === q.email) return true;
           if (q.username && u.username === q.username) return true;
           return false;
@@ -50,7 +53,7 @@ class MockUser {
     });
 
     // Auto-register user on login in Demo Mode if they don't exist yet
-    if (!found && email && !username && !$or) {
+    if (!found && email && !username && !$or && !_id) {
       const mockUsername = email.split('@')[0] || 'Player';
       found = new MockUser({
         username: mockUsername,
@@ -64,13 +67,19 @@ class MockUser {
   }
 
   static findById(id) {
-    if (!id) {
-      return {
-        select: () => this,
-        then: (resolve) => resolve(null)
+    const makeChain = (targetUser) => {
+      const chain = {
+        select: () => chain,
+        lean: () => chain,
+        exec: () => Promise.resolve(targetUser),
+        then: (resolve) => resolve(targetUser)
       };
-    }
-    let user = global.inMemoryUsers.find(u => u._id.toString() === id.toString());
+      return chain;
+    };
+
+    if (!id) return makeChain(null);
+
+    let user = global.inMemoryUsers.find(u => u && u._id && u._id.toString() === id.toString());
     if (!user) {
       // Re-create a temporary demo user on-the-fly to prevent session loss on container restart
       user = new MockUser({
@@ -82,13 +91,7 @@ class MockUser {
       });
       global.inMemoryUsers.push(user);
     }
-    const chain = {
-      select: () => chain,
-      then: (resolve) => {
-        resolve(user);
-      }
-    };
-    return chain;
+    return makeChain(user);
   }
 
   static async findByIdAndUpdate(id, update) {
@@ -130,10 +133,14 @@ class MockGame {
   static async findOne(query) {
     if (!query) return null;
     const { _id, user } = query;
-    let game = global.inMemoryGames.find(g => 
-      g._id.toString() === _id.toString() && g.user.toString() === user.toString()
-    );
-    if (!game) {
+    let game = global.inMemoryGames.find(g => {
+      if (!g) return false;
+      if (_id && (!g._id || g._id.toString() !== _id.toString())) return false;
+      if (user && (!g.user || g.user.toString() !== user.toString())) return false;
+      return true;
+    });
+
+    if (!game && _id && user) {
       // Re-create a temporary active game to prevent session loss
       game = new MockGame({
         _id: _id,
@@ -146,7 +153,7 @@ class MockGame {
       });
       global.inMemoryGames.push(game);
     }
-    return game;
+    return game || null;
   }
 
   static find(query) {
@@ -154,13 +161,13 @@ class MockGame {
     let results = [...global.inMemoryGames];
     
     if (user) {
-      results = results.filter(g => g.user.toString() === user.toString());
+      results = results.filter(g => g && g.user && g.user.toString() === user.toString());
     }
     
     const chain = {
       sort: (sortQuery) => {
         if (sortQuery && sortQuery.createdAt) {
-          results.sort((a, b) => b.createdAt - a.createdAt);
+          results.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         }
         return chain;
       },
@@ -168,6 +175,8 @@ class MockGame {
         results = results.slice(0, n);
         return chain;
       },
+      lean: () => chain,
+      exec: () => Promise.resolve(results),
       then: (resolve) => {
         resolve(results);
       }

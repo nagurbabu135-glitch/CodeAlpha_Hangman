@@ -40,8 +40,16 @@ function Login() {
       console.error('Login/Register Error:', err);
       const serverMessage = err.response?.data?.message;
       const detailError = err.response?.data?.error;
+      const validationErrors = err.response?.data?.errors;
       const statusText = err.response?.status ? ` (Status ${err.response.status})` : '';
-      let displayError = serverMessage || err.message;
+      
+      let displayError = serverMessage;
+      if (!displayError && validationErrors && Array.isArray(validationErrors)) {
+        displayError = validationErrors.map(v => `${v.path || v.param || 'field'}: ${v.msg}`).join(', ');
+      }
+      if (!displayError) {
+        displayError = err.message || 'An unexpected error occurred';
+      }
       if (detailError) {
         displayError += ` Details: ${detailError}`;
       }

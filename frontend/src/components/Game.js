@@ -23,7 +23,12 @@ function Game() {
       return;
     }
     
-    setUser(JSON.parse(userData));
+    try {
+      setUser(JSON.parse(userData));
+    } catch (e) {
+      handleLogout();
+      return;
+    }
     startNewGame();
   }, [navigate]);
 
@@ -51,15 +56,16 @@ function Game() {
     }
   };
 
-  const handleGuess = async (e) => {
-    e.preventDefault();
-    if (!letter || !game) return;
+  const handleGuess = async (e, letterOverride) => {
+    if (e) e.preventDefault();
+    const targetLetter = letterOverride || letter;
+    if (!targetLetter || !game || game.status !== 'active') return;
 
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
         `${API_URL}/game/guess`,
-        { gameId: game.gameId, letter },
+        { gameId: game.gameId, letter: targetLetter },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
@@ -77,6 +83,20 @@ function Game() {
       setMessage(error.response?.data?.message || 'Invalid guess');
     }
   };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!game || game.status !== 'active') return;
+      if (e.target.tagName === 'INPUT') return; // Allow normal typing in input
+      const key = e.key.toUpperCase();
+      if (/^[A-Z]$/.test(key) && !game.guessedLetters?.includes(key)) {
+        handleGuess(null, key);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [game]);
 
   const getHint = async () => {
     if (!game) return;
@@ -273,12 +293,7 @@ function Game() {
               {alphabet.map((char) => (
                 <button
                   key={char}
-                  onClick={() => {
-                    setLetter(char);
-                    if (game.status === 'active') {
-                      document.querySelector('.letter-input').value = char;
-                    }
-                  }}
+                  onClick={() => handleGuess(null, char)}
                   disabled={game.guessedLetters?.includes(char)}
                   className={`key ${game.guessedLetters?.includes(char) ? 'used' : ''}`}
                 >

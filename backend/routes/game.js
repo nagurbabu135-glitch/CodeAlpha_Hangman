@@ -65,6 +65,10 @@ router.post('/guess', auth, async (req, res) => {
   try {
     const { gameId, letter } = req.body;
     
+    if (!gameId) {
+      return res.status(400).json({ message: 'Game ID is required' });
+    }
+    
     if (!letter || letter.length !== 1 || !/^[A-Z]$/.test(letter.toUpperCase())) {
       return res.status(400).json({ message: 'Invalid letter' });
     }
@@ -137,6 +141,10 @@ router.post('/hint', auth, async (req, res) => {
   try {
     const { gameId } = req.body;
     
+    if (!gameId) {
+      return res.status(400).json({ message: 'Game ID is required' });
+    }
+    
     const game = await Game.findOne({ _id: gameId, user: req.user._id });
     if (!game) {
       return res.status(404).json({ message: 'Game not found' });
@@ -154,17 +162,21 @@ router.post('/hint', auth, async (req, res) => {
       const word = game.word;
       const unguessedLetters = word.split('').filter(l => !game.guessedLetters.includes(l));
       
-      // Generate a simple hint based on the word
-      const hints = [
-        `The word starts with "${word[0]}"`,
-        `The word has ${word.length} letters`,
-        `The word ends with "${word[word.length - 1]}"`,
-        `Try guessing a vowel`,
-        `Think about programming terms`,
-        `This word is related to technology`
-      ];
+      const hints = [];
+      if (!game.guessedLetters.includes(word[0])) {
+        hints.push(`The word starts with "${word[0]}"`);
+      }
+      if (!game.guessedLetters.includes(word[word.length - 1])) {
+        hints.push(`The word ends with "${word[word.length - 1]}"`);
+      }
+      const vowels = ['A', 'E', 'I', 'O', 'U'];
+      const unguessedVowels = unguessedLetters.filter(l => vowels.includes(l));
+      if (unguessedVowels.length > 0) {
+        hints.push(`Try guessing a vowel (${unguessedVowels.join(', ')})`);
+      }
+      hints.push(`The word has ${word.length} letters`);
+      hints.push(`Think about programming and technology terms`);
       
-      // Select a hint that doesn't reveal too much
       hint = hints[Math.floor(Math.random() * hints.length)];
     } else {
       // Use OpenAI for intelligent hints
