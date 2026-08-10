@@ -3,7 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './Game.css';
 
-const API_URL = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000/api' : '/api');
+const getApiUrl = () => {
+  if (typeof window !== 'undefined') {
+    const { port, hostname, protocol } = window.location;
+    if (port === '3000' || port === '3001') {
+      return `${protocol}//${hostname}:5000/api`;
+    }
+  }
+  return process.env.REACT_APP_API_URL || '/api';
+};
+
+const API_URL = getApiUrl();
 
 function Game() {
   const [game, setGame] = useState(null);

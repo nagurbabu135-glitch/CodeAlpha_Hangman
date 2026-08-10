@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const path = require('path');
 
 // Set default JWT_SECRET for development if not provided
 if (!process.env.JWT_SECRET) {
@@ -102,6 +103,20 @@ app.use('/game', checkDbConnection, gameRoutes);
 // Health check
 app.get(['/api/health', '/health'], (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
+});
+
+// Serve static frontend build if available
+const frontendBuildPath = path.join(__dirname, '../frontend/build');
+app.use(express.static(frontendBuildPath));
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api') || req.path.startsWith('/auth') || req.path.startsWith('/game') || req.path.startsWith('/health')) {
+    return next();
+  }
+  res.sendFile(path.join(frontendBuildPath, 'index.html'), (err) => {
+    if (err) {
+      next();
+    }
+  });
 });
 
 const PORT = process.env.PORT || 5000;
