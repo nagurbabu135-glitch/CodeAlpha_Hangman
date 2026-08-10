@@ -30,6 +30,8 @@ A full-stack Hangman game with authentication, MongoDB database, and AI-powered 
 
 The Hangman Application is engineered using a decoupled, event-driven Client-Server architecture optimized for enterprise reliability, low latency, and zero-configuration demonstration fallback.
 
+![Animated System Architecture](./architecture.svg)
+
 ### High-Level Component Topology
 
 ```mermaid
