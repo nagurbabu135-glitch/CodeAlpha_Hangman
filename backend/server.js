@@ -21,7 +21,7 @@ app.use(express.json());
 
 // Database Connection
 const mongoUri = process.env.MONGODB_URI;
-const isDemoMode = !mongoUri;
+const isDemoMode = !mongoUri || mongoUri.includes('abcde.mongodb.net') || mongoUri.includes('placeholder') || mongoUri.includes('dummy') || mongoUri.trim() === '';
 
 if (isDemoMode) {
   console.log('--------------------------------------------------');
