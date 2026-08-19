@@ -4,6 +4,9 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 
+// Disable Mongoose command buffering globally to prevent 10000ms buffering timeouts
+mongoose.set('bufferCommands', false);
+
 // Set default JWT_SECRET for development if not provided
 if (!process.env.JWT_SECRET) {
   process.env.JWT_SECRET = 'dev_secret_key_change_in_production_12345678';
@@ -25,7 +28,7 @@ const isDemoMode = !mongoUri || mongoUri.includes('abcde.mongodb.net') || mongoU
 
 if (isDemoMode) {
   console.log('--------------------------------------------------');
-  console.log('WARNING: MONGODB_URI is not set!');
+  console.log('WARNING: MONGODB_URI is not set or placeholder!');
   console.log('Running in In-Memory Demo Mode.');
   console.log('Data will reset when the server restarts/spins down.');
   console.log('--------------------------------------------------');
@@ -52,7 +55,7 @@ async function connectDb() {
       useNewUrlParser: true,
       useUnifiedTopology: true,
       bufferCommands: false,
-      serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+      serverSelectionTimeoutMS: 2000, // Fail fast after 2s instead of hanging for 10s
     }).then((m) => {
       console.log('MongoDB Connected successfully');
       cachedDb = m;
@@ -72,25 +75,22 @@ async function connectDb() {
 // Start connection attempt asynchronously if not in demo mode
 if (!isDemoMode) {
   connectDb().catch(err => {
-    console.error('Initial MongoDB Connection Error:', err);
+    console.error('Initial MongoDB Connection Error (switching to Smart Fallback):', err.message);
   });
 }
 
 // Database connection health check middleware
 const checkDbConnection = async (req, res, next) => {
   if (isDemoMode) {
-    return next(); // Skip DB checks and allow requests in Demo Mode
+    return next();
   }
 
   try {
     await connectDb();
     next();
   } catch (err) {
-    console.error('Database connection middleware error:', err);
-    return res.status(503).json({
-      message: 'Database connection is currently unavailable. Please ensure MONGODB_URI environment variable is configured in Vercel settings.',
-      error: err.message
-    });
+    console.warn('Database connection unavailable, switching to Smart In-Memory Fallback:', err.message);
+    next(); // Continue request using Smart Model Fallback
   }
 };
 
@@ -102,7 +102,7 @@ app.use('/game', checkDbConnection, gameRoutes);
 
 // Health check
 app.get(['/api/health', '/health'], (req, res) => {
-  res.json({ status: 'ok', message: 'Server is running' });
+  res.json({ status: 'ok', message: 'Server is running', readyState: mongoose.connection.readyState });
 });
 
 // Serve static frontend build if available
