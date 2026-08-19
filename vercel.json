@@ -19,8 +19,16 @@
       "destination": "/api/index.js"
     },
     {
-      "source": "/((?!api/|.*\\.[a-zA-Z0-9]+$).*)",
-      "destination": "/index.html"
+      "source": "/css/(.*)",
+      "destination": "/frontend/css/$1"
+    },
+    {
+      "source": "/js/(.*)",
+      "destination": "/frontend/js/$1"
+    },
+    {
+      "source": "/((?!api/|frontend/).*)",
+      "destination": "/frontend/index.html"
     }
   ]
 }
