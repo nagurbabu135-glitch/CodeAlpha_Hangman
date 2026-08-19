@@ -377,21 +377,26 @@ async function startNewGame() {
             return;
         }
 
-        currentGameId = data.game_id;
+        currentGameId = data.game_id || data.gameId;
 
         // Reset UI Components
-        renderWordBlanks(data.masked_word);
+        const maskedWord = data.masked_word || data.wordState || data.maskedWord || (data.word_length ? '_ '.repeat(data.word_length).trim() : '');
+        renderWordBlanks(maskedWord);
         resetKeyboard();
         hideHint();
 
         // Update Canvas & Badges
-        document.getElementById('gameCategory').textContent = data.category;
-        document.getElementById('difficultyPill').textContent = data.difficulty.toUpperCase();
-        document.getElementById('currentStageNum').textContent = '0';
-        document.getElementById('maxStageNum').textContent = data.max_attempts;
-        document.getElementById('attemptsText').textContent = `${data.attempts_remaining} Attempts Left`;
+        if (data.category) document.getElementById('gameCategory').textContent = data.category;
+        if (data.difficulty) document.getElementById('difficultyPill').textContent = data.difficulty.toUpperCase();
+        const stage = data.stage !== undefined ? data.stage : (data.incorrectGuesses || 0);
+        const maxAttempts = data.max_attempts || data.maxIncorrectGuesses || 6;
+        const attemptsLeft = data.attempts_remaining !== undefined ? data.attempts_remaining : (maxAttempts - stage);
 
-        canvasEngine.setStage(0, data.max_attempts);
+        document.getElementById('currentStageNum').textContent = stage;
+        document.getElementById('maxStageNum').textContent = maxAttempts;
+        document.getElementById('attemptsText').textContent = `${attemptsLeft} Attempts Left`;
+
+        canvasEngine.setStage(stage, maxAttempts);
 
     } catch (err) {
         console.error('Error starting game:', err);
@@ -405,21 +410,31 @@ function restartGameWithSettings() {
 
 function renderWordBlanks(maskedWordString) {
     const container = document.getElementById('wordDisplay');
+    if (!container) return;
     container.innerHTML = '';
-    const letters = maskedWordString.split(' ');
+
+    if (!maskedWordString) return;
+
+    let letters = [];
+    if (typeof maskedWordString === 'string') {
+        letters = maskedWordString.includes(' ') ? maskedWordString.trim().split(/\s+/) : maskedWordString.split('');
+    } else if (Array.isArray(maskedWordString)) {
+        letters = maskedWordString;
+    }
 
     letters.forEach(char => {
         const tile = document.createElement('div');
-        tile.className = 'letter-tile';
-        if (char !== '_') {
+        if (char && char !== '_') {
+            tile.className = 'letter-tile revealed';
             tile.textContent = char;
-            tile.style.borderBottomColor = '#10b981';
         } else {
+            tile.className = 'letter-tile blank';
             tile.textContent = '';
         }
         container.appendChild(tile);
     });
 }
+
 
 function buildVirtualKeyboard() {
     const rows = [
@@ -501,11 +516,17 @@ async function submitGuess(letter) {
         }
 
         // Update Word Blanks & Canvas Stage
-        renderWordBlanks(data.masked_word);
-        document.getElementById('attemptsText').textContent = `${data.attempts_remaining} Attempts Left`;
-        document.getElementById('currentStageNum').textContent = data.stage;
+        const maskedWord = data.masked_word || data.wordState || data.maskedWord;
+        renderWordBlanks(maskedWord);
 
-        canvasEngine.setStage(data.stage, data.max_attempts);
+        const stage = data.stage !== undefined ? data.stage : (data.incorrectGuesses || 0);
+        const maxAttempts = data.max_attempts || data.maxIncorrectGuesses || 6;
+        const attemptsLeft = data.attempts_remaining !== undefined ? data.attempts_remaining : Math.max(0, maxAttempts - stage);
+
+        document.getElementById('attemptsText').textContent = `${attemptsLeft} Attempts Left`;
+        document.getElementById('currentStageNum').textContent = stage;
+
+        canvasEngine.setStage(stage, maxAttempts);
 
         // Game Over Evaluation
         if (data.status === 'WON') {

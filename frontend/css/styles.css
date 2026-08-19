@@ -656,21 +656,37 @@ body {
 
 .letter-tile {
     width: 48px;
-    height: 56px;
-    background: rgba(255, 255, 255, 0.05);
+    height: 58px;
+    background: rgba(18, 24, 38, 0.8);
     border-bottom: 4px solid var(--primary);
     border-radius: 8px 8px 4px 4px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-family: var(--font-heading);
-    font-size: 2rem;
+    font-size: 2.2rem;
     font-weight: 800;
     text-transform: uppercase;
-    color: #fff;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
+
+.letter-tile.blank {
+    background: rgba(255, 255, 255, 0.05);
+    border-bottom: 5px solid #6366f1;
+    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4), inset 0 0 8px rgba(99, 102, 241, 0.15);
+}
+
+.letter-tile.revealed {
+    background: rgba(16, 185, 129, 0.15);
+    border-bottom: 5px solid #10b981;
+    color: #10b981;
+    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+    text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
+
 
 @keyframes popIn {
     0% { transform: scale(0.6); opacity: 0; }
