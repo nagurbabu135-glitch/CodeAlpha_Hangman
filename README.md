@@ -1,34 +1,10 @@
-# Hangman Game - Full Stack Application
+# 🎮 HANGMAN PRO - Enterprise Python & MongoDB Web Application
 
-A full-stack Hangman game with authentication, MongoDB database, and AI-powered hints using OpenAI.
+> A full-stack, next-generation **Hangman Web Application** built with a **Python REST Backend**, **MongoDB Database**, **JWT Authentication**, and an **Ultra-Realistic HTML5 Canvas Graphics Engine** featuring pendulum rope physics, joint ragdoll character dynamics, and Web Audio API synthesis.
 
-## Features
+---
 
-- **Authentication**: User registration and login with JWT tokens
-- **MongoDB Database**: Persistent storage for users and game history
-- **AI-Powered Hints**: OpenAI GPT-3.5 integration for intelligent game hints
-- **Game Statistics**: Track games played and won
-- **Modern UI**: Clean, responsive React frontend with beautiful design
-
-## Tech Stack
-
-### Backend
-- Node.js
-- Express.js
-- MongoDB with Mongoose
-- JWT Authentication
-- OpenAI API
-- bcryptjs for password hashing
-
-### Frontend
-- React
-- React Router
-- Axios for API calls
-- CSS for styling
-
-## System Architecture
-
-The Hangman Application is engineered using a decoupled, event-driven Client-Server architecture optimized for enterprise reliability, low latency, and zero-configuration demonstration fallback.
+## 🏗️ System Architecture
 
 ![Animated System Architecture](./architecture.svg)
 
@@ -36,268 +12,143 @@ The Hangman Application is engineered using a decoupled, event-driven Client-Ser
 
 ```mermaid
 graph TD
-    %% Custom Styling Definitions
-    classDef clientStyle fill:#1e1e2e,stroke:#89b4fa,stroke-width:2px,color:#cdd6f4;
-    classDef serverStyle fill:#181825,stroke:#f9e2af,stroke-width:2px,color:#cdd6f4;
-    classDef aiStyle fill:#313244,stroke:#a6e3a1,stroke-width:2px,color:#cdd6f4;
-    classDef dbStyle fill:#181825,stroke:#fab387,stroke-width:2px,color:#cdd6f4;
-    classDef fallbackStyle fill:#45475a,stroke:#f38ba8,stroke-width:2px,color:#cdd6f4,stroke-dasharray: 5 5;
-
-    subgraph Client ["Client Presentation Tier (React SPA)"]
-        UI["React 18 SPA Engine"]:::clientStyle
-        AuthComp["Auth Module (Login / Register)"]:::clientStyle
-        GameComp["Game View (SVG Canvas + Virtual Keyboard)"]:::clientStyle
-        HttpClient["Axios Engine (Bearer Interceptor)"]:::clientStyle
-        SessionStore[("Browser LocalStorage - JWT Token")]:::clientStyle
-
-        UI --> AuthComp
-        UI --> GameComp
-        AuthComp --> HttpClient
-        GameComp --> HttpClient
-        AuthComp -. Store Token .-> SessionStore
+    subgraph Client ["Client Layer (Browser SPA)"]
+        UI["Glassmorphism UI System (HTML5/CSS3)"]
+        CanvasEngine["Canvas Graphics & Physics Engine (canvas.js)"]
+        AudioSynth["Web Audio FX Synthesizer (app.js)"]
+        AuthClient["JWT Session Manager (localStorage)"]
     end
 
-    subgraph API ["Application API Server (Express Engine / Vercel Serverless)"]
-        Gateway["Express Server Router (server.js / api/index.js)"]:::serverStyle
-        MiddlewareChain["Middleware Pipeline (CORS, JSON Parser)"]:::serverStyle
-        JWTAuth["JWT Authentication Guard"]:::serverStyle
-        HealthCheck["Database Connection Health Sentinel"]:::serverStyle
-        AuthRoutes["Auth Controller (/api/auth)"]:::serverStyle
-        GameRoutes["Game Controller (/api/game)"]:::serverStyle
-
-        Gateway --> MiddlewareChain
-        MiddlewareChain --> HealthCheck
-        HealthCheck --> JWTAuth
-        JWTAuth --> AuthRoutes
-        JWTAuth --> GameRoutes
+    subgraph Server ["Backend Layer (Python REST Server)"]
+        FlaskServer["Flask Web Server (app.py)"]
+        JWTMiddleware["JWT Authentication Middleware"]
+        GameEngine["Server-Side Game & Score Logic"]
     end
 
-    subgraph External ["AI Intelligence Provider"]
-        OpenAI["OpenAI API Service (GPT-3.5 Turbo)"]:::aiStyle
+    subgraph Storage ["Database Layer (MongoDB)"]
+        MongoDb[("MongoDB Server (hangman_db)")]
+        UsersCol[("Collection: users")]
+        WordsCol[("Collection: words")]
+        GamesCol[("Collection: games")]
+        LeaderboardCol[("Collection: leaderboard")]
     end
 
-    subgraph Persistence ["Persistence Layer Engine"]
-        MongoDB[("Primary Storage: MongoDB Atlas / Community")]:::dbStyle
-        MockDB[("In-Memory Demo Storage: MockDB Instance")]:::fallbackStyle
-    end
-
-    HttpClient == "HTTPS REST API (JWT Bearer Token)" ==> Gateway
-    GameRoutes == "Async OpenAI Prompt Pipeline" ==> OpenAI
+    UI -->|HTTP / REST API| FlaskServer
+    AuthClient -->|Bearer JWT Header| JWTMiddleware
+    JWTMiddleware --> FlaskServer
+    FlaskServer --> GameEngine
     
-    HealthCheck -- "MONGODB_URI Active" --> MongoDB
-    HealthCheck -. "MONGODB_URI Omitted (Demo Mode)" .-> MockDB
-    
-    AuthRoutes & GameRoutes --> MongoDB
-    AuthRoutes & GameRoutes -. "Fallback Operations" .-> MockDB
+    GameEngine -->|PyMongo Client| MongoDb
+    MongoDb --> UsersCol
+    MongoDb --> WordsCol
+    MongoDb --> GamesCol
+    MongoDb --> LeaderboardCol
+
+    CanvasEngine -->|Render 60FPS Physics| UI
+    AudioSynth -->|Synthesize SFX| UI
 ```
 
-### End-to-End Sequence & Intelligence Fallback Workflow
+---
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as Player / Client UI
-    participant React as React SPA
-    participant Express as Express API Gateway
-    participant Guard as JWT Auth & Sentinel
-    participant OpenAI as OpenAI GPT-3.5 API
-    participant DB as Storage Engine (Mongo / MockDB)
+## 🌟 Key Features
 
-    rect rgb(30, 30, 46)
-        note right of User: Authentication Flow
-        User->>React: Submit Credentials (email, password)
-        React->>Express: POST /api/auth/login
-        Express->>DB: Query User & Verify Hash (bcryptjs)
-        DB-->>Express: Return User Object
-        Express->>React: 200 OK + Signed JWT Token
-        React->>User: Store JWT in LocalStorage & Render Game Dashboard
-    end
+### 🔐 1. Enterprise Authentication & Security
+- **JWT Authentication**: Stateless session tokens (`PyJWT`) with automatic token verification & expiration.
+- **Bcrypt Hashing**: Secure salted password encryption (`bcrypt`).
+- **Real-Time Password Strength Meter**: Evaluates character length, numbers, uppercase letters, and special symbols dynamically.
+- **Anti-Cheat Server Architecture**: Secret words are strictly kept server-side in MongoDB; client receives masked strings (`_ A _ A _ _ I P T`).
 
-    rect rgb(24, 24, 37)
-        note right of User: Interactive Gameplay Loop
-        User->>React: Press Key / Input Guess (e.g. 'A')
-        React->>Express: POST /api/game/guess (Headers: Bearer <Token>)
-        Express->>Guard: Validate Bearer Token
-        Guard-->>Express: Inject Authenticated User Context
-        Express->>DB: Fetch Active Game State by Game ID
-        DB-->>Express: Active Game Entity
-        Express->>Express: Evaluate Guess & Calculate Win/Loss/Remaining Lives
-        Express->>DB: Update Game State & Incremental Stats
-        Express->>React: Return Masked Word State & Guess Result
-        React->>User: Animate SVG Hangman & Enable/Disable Keyboard Keys
-    end
+### 🎨 2. Ultra-Realistic HTML5 Canvas Visual Engine
+- **Wood Grain Gallows**: Rendered with timber grain textures, mortise joints, iron base brackets, and metallic bolts.
+- **Pendulum Rope Physics**: Dynamic swinging rope loop with velocity dampening (`requestAnimationFrame`).
+- **Ragdoll Character Physics**: Detailed 6-stage executioner model with facial expression shifts (Happy -> Worried -> Shocked -> Game Over Dead Eyes).
+- **Particle FX**: Confetti fireworks particle burst on Victory; trapdoor drop release mechanism on Loss.
 
-    rect rgb(49, 50, 68)
-        note right of User: AI Hint & Resilience Fallback Flow
-        User->>React: Click 'Get AI Hint'
-        React->>Express: POST /api/game/hint (Bearer Token)
-        alt OpenAI API Key Present & Healthy
-            Express->>OpenAI: Request Hint (State, Guessed Letters, Lives)
-            OpenAI-->>Express: Subtle Text Hint Response
-        else OpenAI API Key Missing or Service Rate Limited
-            Express->>Express: Execute Local Pattern Heuristic (Vowels/Word Bounds)
-        end
-        Express->>DB: Append Hint to Game Document
-        Express->>React: Return Formatted Hint String
-        React->>User: Render Hint Banner
-    end
-```
+### 🔊 3. Zero-Dependency Web Audio API Sound Synthesizer
+- Built-in Web Audio synthesizer generating real-time audio effects for key clicks, correct chime, wrong attempt thud, victory fanfare, and loss execution drop.
 
-### Architectural Highlights
+### 📊 4. MongoDB Persistent Analytics & Leaderboard
+- **Categorized Word Collection**: Seeding script populates 6 categories (Programming & Tech, Movies & TV, Science & Nature, World History, Animals, Food & Culinary).
+- **Global Leaderboard**: Tracks top players by High Score, Total Wins, and Streak.
+- **Personal Statistics Dashboard**: Analytics modal with Win Rate %, total games played, and match history log.
 
-- **Dual Database Engine (Zero-Config Demo Mode)**:
-  - When `MONGODB_URI` is supplied, data is persisted via MongoDB & Mongoose ORM.
-  - When `MONGODB_URI` is omitted, the app dynamically routes through an in-memory database adapter (`mockDb.js`), allowing instant execution without database setup.
-- **Resilient AI Hint Engine**:
-  - Leverages OpenAI GPT-3.5 Turbo for generating subtle gameplay hints.
-  - Features an automated fallback heuristic that provides vowel/pattern hints if OpenAI API keys are absent or rate-limited.
-- **Hybrid Cloud & Local Hosting**:
-  - Express server architecture supporting Docker containers, traditional hosting, and Vercel Serverless Functions (`api/index.js`).
-- **Stateless Authentication**:
-  - Secure password hashing using `bcryptjs`.
-  - JWT token validation attached via HTTP `Authorization: Bearer <token>` headers.
+---
 
-## Prerequisites
-
-- Node.js (v14 or higher)
-- MongoDB (running locally or MongoDB Atlas connection string)
-- OpenAI API Key
-
-## Setup Instructions
-
-### 1. Install MongoDB
-
-**Option A: Local MongoDB**
-- Download and install MongoDB from https://www.mongodb.com/try/download/community
-- Start MongoDB service
-
-**Option B: MongoDB Atlas (Cloud)**
-- Create a free account at https://www.mongodb.com/cloud/atlas
-- Create a cluster and get your connection string
-
-### 2. Get OpenAI API Key
-
-- Sign up at https://platform.openai.com/
-- Generate an API key from your dashboard
-
-### 3. Backend Setup
-
-```bash
-cd backend
-npm install
-```
-
-Create a `.env` file in the backend directory:
-
-```env
-PORT=5000
-MONGODB_URI=mongodb://localhost:27017/hangman
-# Or use MongoDB Atlas: mongodb+srv://<username>:<password>@cluster.mongodb.net/hangman
-JWT_SECRET=your_super_secret_jwt_key_change_this
-OPENAI_API_KEY=your_openai_api_key_here
-```
-
-Start the backend server:
-
-```bash
-npm run dev
-```
-
-The backend will run on `http://localhost:5000`
-
-### 4. Frontend Setup
-
-```bash
-cd frontend
-npm install
-```
-
-Start the React development server:
-
-```bash
-npm start
-```
-
-The frontend will run on `http://localhost:3000`
-
-## Usage
-
-1. Open `http://localhost:3000` in your browser
-2. Register a new account or login
-3. Start playing Hangman!
-4. Use the "Get AI Hint" button for intelligent hints
-5. Track your wins and games played
-
-## API Endpoints
-
-### Authentication
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login user
-- `GET /api/auth/profile` - Get user profile (requires auth)
-
-### Game
-- `POST /api/game/start` - Start a new game (requires auth)
-- `POST /api/game/guess` - Make a letter guess (requires auth)
-- `POST /api/game/hint` - Get AI hint (requires auth)
-- `GET /api/game/history` - Get game history (requires auth)
-
-## Game Rules
-
-- Guess the word one letter at a time
-- You have 6 incorrect guesses allowed
-- Use the virtual keyboard or type letters
-- Get AI hints if you're stuck
-- Win by guessing all letters before running out of attempts
-
-## Project Structure
+## 📂 Project Structure
 
 ```
-hangman-app/
+hangman_mongodb/
 ├── backend/
-│   ├── models/
-│   │   ├── User.js
-│   │   └── Game.js
-│   ├── routes/
-│   │   ├── auth.js
-│   │   └── game.js
-│   ├── middleware/
-│   │   └── auth.js
-│   ├── server.js
-│   ├── package.json
-│   └── .env
+│   ├── app.py             # Flask Web Application & REST APIs
+│   ├── db.py              # MongoDB PyMongo Driver & Index Setup
+│   └── seed_words.py      # Database Seeder script for words collection
 ├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── Login.js
-│   │   │   ├── Login.css
-│   │   │   ├── Game.js
-│   │   │   └── Game.css
-│   │   ├── App.js
-│   │   ├── App.css
-│   │   └── index.js
-│   ├── public/
-│   │   └── index.html
-│   └── package.json
-└── README.md
+│   ├── css/
+│   │   └── styles.css     # Glassmorphism Dark Mode Architecture
+│   ├── js/
+│   │   ├── app.js         # REST API Client, Auth Manager, Audio Synthesizer
+│   │   └── canvas.js      # Realistic HTML5 Canvas Physics Engine
+│   └── index.html         # Single Page Application HTML Template
+├── requirements.txt       # Python dependency manifest
+└── README.md              # Documentation & Architecture specification
 ```
 
-## Troubleshooting
+---
 
-**MongoDB Connection Error**
-- Ensure MongoDB is running
-- Check your MONGODB_URI in .env file
+## 🚀 Quick Start & Installation
 
-**OpenAI API Error**
-- Verify your OPENAI_API_KEY is correct
-- Ensure you have credits in your OpenAI account
+### Prerequisites
+- **Python 3.10+** installed
+- **MongoDB** running locally on port `27017` (or MongoDB Atlas URI)
 
-**CORS Error**
-- Backend CORS is configured for localhost:3000
-- If using different ports, update CORS in server.js
+### 1. Install Dependencies
+```bash
+pip install -r requirements.txt
+```
 
-## Security Notes
+### 2. Seed the MongoDB Database
+Populate the `words` collection in MongoDB (`hangman_db`):
+```bash
+python backend/seed_words.py
+```
 
-- Change the JWT_SECRET in production
-- Use environment variables for sensitive data
-- Implement rate limiting for production
-- Add HTTPS for production deployment
+### 3. Launch the Server
+Start the Python backend server:
+```bash
+python backend/app.py
+```
+
+### 4. Access the Application
+Open your browser and navigate to:
+```
+http://127.0.0.1:5000
+```
+
+---
+
+## 📡 REST API Reference
+
+### Authentication Endpoints
+- `POST /api/auth/register` - Create a new user account (returns JWT token & profile).
+- `POST /api/auth/login` - Authenticate user credentials (returns JWT token).
+- `GET /api/auth/me` - Validate session token & return profile metrics.
+
+### Gameplay Endpoints
+- `POST /api/game/start` - Initialize a new game session with masked secret word.
+- `POST /api/game/guess` - Submit letter guess, calculate score, return stage & status.
+- `POST /api/game/hint` - Fetch word hint from MongoDB (applies small score penalty).
+
+### Leaderboard & Stats Endpoints
+- `GET /api/leaderboard` - Fetch Top 10 global players ordered by high score.
+- `GET /api/stats` - Fetch personal game history & win/loss analytics.
+
+---
+
+## 🛠️ Environment Configuration
+Optional environment variables can be set in a `.env` file:
+```env
+MONGO_URI=mongodb://localhost:27017/
+DB_NAME=hangman_db
+JWT_SECRET=super-secret-hangman-key-2026
+PORT=5000
+```

@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hangman Pro | Next-Gen Python & MongoDB Word Game</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+    <!-- Animated Ambient Background Mesh -->
+    <div class="bg-mesh"></div>
+    <div class="particle-overlay" id="particleOverlay"></div>
+
+    <!-- MAIN APP CONTAINER -->
+    <div class="app-container">
+
+        <!-- ========================================== -->
+        <!-- 1. AUTHENTICATION PORTAL (LOGIN / REGISTER) -->
+        <!-- ========================================== -->
+        <section id="authSection" class="auth-section">
+            <div class="auth-card glass-card">
+                <div class="auth-header">
+                    <div class="brand-badge">
+                        <i class="fa-solid fa-gamepad"></i>
+                        <span>PYTHON & MONGODB POWERED</span>
+                    </div>
+                    <h1 class="brand-title">HANGMAN<span class="highlight">PRO</span></h1>
+                    <p class="brand-subtitle">Master the dictionary. Conquer the executioner.</p>
+                </div>
+
+                <!-- Tab Controls -->
+                <div class="auth-tabs">
+                    <button id="tabLoginBtn" class="tab-btn active" onclick="switchAuthTab('login')">
+                        <i class="fa-solid fa-right-to-bracket"></i> Sign In
+                    </button>
+                    <button id="tabRegisterBtn" class="tab-btn" onclick="switchAuthTab('register')">
+                        <i class="fa-solid fa-user-plus"></i> Create Account
+                    </button>
+                </div>
+
+                <!-- Error & Success Alert Banner -->
+                <div id="authAlert" class="auth-alert hidden"></div>
+
+                <!-- LOGIN FORM -->
+                <form id="loginForm" class="auth-form" onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label for="loginIdentifier"><i class="fa-solid fa-user"></i> Username or Email</label>
+                        <input type="text" id="loginIdentifier" placeholder="Enter your username or email" required autocomplete="username">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="loginPassword"><i class="fa-solid fa-lock"></i> Password</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="loginPassword" placeholder="Enter your password" required autocomplete="current-password">
+                            <button type="button" class="eye-toggle" onclick="togglePasswordVisibility('loginPassword', this)">
+                                <i class="fa-regular fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-options">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="rememberMe" checked> Remember me
+                        </label>
+                        <a href="#" class="forgot-link" onclick="alert('Demo Mode: Contact admin or create a new account!')">Forgot Password?</a>
+                    </div>
+
+                    <button type="submit" id="loginSubmitBtn" class="btn btn-primary btn-block glow-btn">
+                        <span>Sign In to Play</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </form>
+
+                <!-- REGISTER FORM -->
+                <form id="registerForm" class="auth-form hidden" onsubmit="handleRegister(event)">
+                    <div class="form-group">
+                        <label for="regUsername"><i class="fa-solid fa-at"></i> Username</label>
+                        <input type="text" id="regUsername" placeholder="Choose a unique username" minlength="3" required autocomplete="username">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="regEmail"><i class="fa-solid fa-envelope"></i> Email Address</label>
+                        <input type="email" id="regEmail" placeholder="name@example.com" required autocomplete="email">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="regPassword"><i class="fa-solid fa-shield-halved"></i> Password</label>
+                        <div class="password-wrapper">
+                            <input type="password" id="regPassword" placeholder="Minimum 6 characters" minlength="6" required oninput="checkPasswordStrength(this.value)" autocomplete="new-password">
+                            <button type="button" class="eye-toggle" onclick="togglePasswordVisibility('regPassword', this)">
+                                <i class="fa-regular fa-eye"></i>
+                            </button>
+                        </div>
+                        <!-- Password Strength Indicator -->
+                        <div class="strength-meter">
+                            <div id="strengthBar" class="strength-bar"></div>
+                        </div>
+                        <span id="strengthText" class="strength-text">Password Strength</span>
+                    </div>
+
+                    <button type="submit" id="registerSubmitBtn" class="btn btn-accent btn-block glow-btn">
+                        <span>Create Free Account</span>
+                        <i class="fa-solid fa-user-check"></i>
+                    </button>
+                </form>
+
+                <div class="auth-footer">
+                    <i class="fa-solid fa-database"></i> Secured with MongoDB & Encrypted JWT Auth
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- 2. GAME DASHBOARD (PLAYING ARENA)           -->
+        <!-- ========================================== -->
+        <section id="gameSection" class="game-section hidden">
+            
+            <!-- NAVBAR / HEADER -->
+            <header class="game-navbar glass-card">
+                <div class="nav-brand">
+                    <i class="fa-solid fa-skull-crossbones brand-icon"></i>
+                    <span class="nav-title">HANGMAN<span class="highlight">PRO</span></span>
+                </div>
+
+                <!-- User Stats Header Widget -->
+                <div class="nav-stats">
+                    <div class="stat-pill" title="High Score">
+                        <i class="fa-solid fa-trophy gold"></i>
+                        <span id="navHighScore">0</span>
+                    </div>
+                    <div class="stat-pill" title="Current Win Streak">
+                        <i class="fa-solid fa-fire orange"></i>
+                        <span id="navStreak">0</span>
+                    </div>
+                    <div class="stat-pill" title="Wins / Total">
+                        <i class="fa-solid fa-chart-line green"></i>
+                        <span id="navWins">0</span>
+                    </div>
+                </div>
+
+                <!-- Nav Controls -->
+                <div class="nav-actions">
+                    <button class="nav-btn" onclick="openLeaderboard()" title="Global Leaderboard">
+                        <i class="fa-solid fa-ranking-star"></i>
+                        <span class="btn-text">Leaderboard</span>
+                    </button>
+                    <button class="nav-btn" onclick="openStatsModal()" title="My Statistics">
+                        <i class="fa-solid fa-user-astronaut"></i>
+                        <span class="btn-text">Stats</span>
+                    </button>
+                    <button id="soundToggleBtn" class="nav-btn icon-only" onclick="toggleSound()" title="Toggle Audio FX">
+                        <i class="fa-solid fa-volume-high"></i>
+                    </button>
+                    <div class="user-profile-menu">
+                        <div class="avatar" id="userAvatar">U</div>
+                        <span id="navUsername" class="username-text">User</span>
+                        <button class="logout-btn" onclick="handleLogout()" title="Sign Out">
+                            <i class="fa-solid fa-power-off"></i>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- MAIN GAMEPLAY ARENA GRID -->
+            <main class="game-arena">
+
+                <!-- LEFT / CENTER COLUMN: CANVAS HANGMAN STAGE -->
+                <div class="canvas-column glass-card">
+                    <div class="canvas-header">
+                        <div class="stage-badge">
+                            <i class="fa-solid fa-layer-group"></i>
+                            <span>STAGE <span id="currentStageNum">0</span> / <span id="maxStageNum">6</span></span>
+                        </div>
+                        <div class="attempts-badge" id="attemptsBadge">
+                            <i class="fa-solid fa-heart"></i>
+                            <span id="attemptsText">6 Attempts Left</span>
+                        </div>
+                    </div>
+
+                    <!-- REALISTIC HTML5 CANVAS GRAPHICS ENGINE -->
+                    <div class="canvas-wrapper">
+                        <canvas id="hangmanCanvas" width="450" height="420"></canvas>
+                    </div>
+
+                    <div class="canvas-footer">
+                        <div class="category-pill">
+                            <i class="fa-solid fa-tag"></i> Category: <strong id="gameCategory">Programming</strong>
+                        </div>
+                        <div class="difficulty-pill" id="difficultyPill">MEDIUM</div>
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN: GAME INTERACTION & KEYBOARD -->
+                <div class="controls-column glass-card">
+
+                    <!-- TOP SELECTION BAR -->
+                    <div class="game-setup-bar">
+                        <div class="select-group">
+                            <label for="categorySelect"><i class="fa-solid fa-folder-open"></i> Category</label>
+                            <select id="categorySelect" onchange="restartGameWithSettings()">
+                                <option value="All">All Categories</option>
+                                <option value="Programming & Tech">Programming & Tech</option>
+                                <option value="Movies & TV">Movies & TV</option>
+                                <option value="Science & Nature">Science & Nature</option>
+                                <option value="World History">World History</option>
+                                <option value="Animals">Animals</option>
+                                <option value="Food & Culinary">Food & Culinary</option>
+                            </select>
+                        </div>
+
+                        <div class="select-group">
+                            <label for="difficultySelect"><i class="fa-solid fa-gauge-high"></i> Difficulty</label>
+                            <select id="difficultySelect" onchange="restartGameWithSettings()">
+                                <option value="easy">Easy (8 Lives)</option>
+                                <option value="medium" selected>Medium (6 Lives)</option>
+                                <option value="hard">Hard (5 Lives)</option>
+                            </select>
+                        </div>
+
+                        <button class="btn btn-secondary new-game-btn" onclick="startNewGame()">
+                            <i class="fa-solid fa-rotate"></i> New Game
+                        </button>
+                    </div>
+
+                    <!-- SECRET WORD BLANKS DISPLAY -->
+                    <div class="word-display-container">
+                        <div id="wordDisplay" class="word-letters-wrapper">
+                            <!-- Letters rendered dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- HINT & GUESSED HISTORY ROW -->
+                    <div class="hint-row">
+                        <button id="hintBtn" class="btn btn-hint" onclick="requestHint()">
+                            <i class="fa-solid fa-lightbulb"></i> Get Hint
+                        </button>
+                        <div id="hintBox" class="hint-box hidden">
+                            <i class="fa-solid fa-quote-left"></i>
+                            <span id="hintText">...</span>
+                        </div>
+                    </div>
+
+                    <!-- VIRTUAL QWERTY SOFT KEYBOARD -->
+                    <div class="keyboard-container">
+                        <div class="keyboard-row" id="kbRow1"></div>
+                        <div class="keyboard-row" id="kbRow2"></div>
+                        <div class="keyboard-row" id="kbRow3"></div>
+                    </div>
+
+                    <div class="keyboard-tip">
+                        <i class="fa-solid fa-keyboard"></i> You can also press keys on your physical keyboard!
+                    </div>
+
+                </div>
+
+            </main>
+        </section>
+
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 3. MODALS (GAME OVER, LEADERBOARD, STATS)   -->
+    <!-- ========================================== -->
+
+    <!-- GAME OVER / VICTORY MODAL -->
+    <div id="gameResultModal" class="modal-overlay hidden">
+        <div class="modal-card glass-card">
+            <div id="modalHeader" class="modal-header">
+                <!-- Dynamically Win/Loss title -->
+            </div>
+
+            <div class="modal-body">
+                <div class="word-reveal-box">
+                    <span class="reveal-label">THE SECRET WORD WAS:</span>
+                    <h2 id="modalSecretWord" class="reveal-word">PYTHON</h2>
+                    <p id="modalDefinition" class="reveal-definition"></p>
+                </div>
+
+                <div class="score-summary-grid">
+                    <div class="score-card">
+                        <span class="score-label">Points Earned</span>
+                        <span id="modalEarnedScore" class="score-value highlight">+150</span>
+                    </div>
+                    <div class="score-card">
+                        <span class="score-label">Current Streak</span>
+                        <span id="modalCurrentStreak" class="score-value orange">3 🔥</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-primary glow-btn btn-block" onclick="closeResultModalAndPlayNext()">
+                    <i class="fa-solid fa-play"></i> Play Next Word
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- LEADERBOARD MODAL -->
+    <div id="leaderboardModal" class="modal-overlay hidden">
+        <div class="modal-card glass-card modal-large">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-trophy gold"></i> Global Leaderboard</h2>
+                <button class="close-modal-btn" onclick="closeModal('leaderboardModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>High Score</th>
+                            <th>Total Wins</th>
+                            <th>Best Streak</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboardBody">
+                        <!-- Populated via API -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- USER STATS MODAL -->
+    <div id="statsModal" class="modal-overlay hidden">
+        <div class="modal-card glass-card modal-large">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-chart-pie"></i> Performance Analytics</h2>
+                <button class="close-modal-btn" onclick="closeModal('statsModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="stats-overview-grid">
+                    <div class="stat-box">
+                        <i class="fa-solid fa-gamepad"></i>
+                        <span id="statPlayed" class="stat-num">0</span>
+                        <span class="stat-lbl">Games Played</span>
+                    </div>
+                    <div class="stat-box">
+                        <i class="fa-solid fa-circle-check green"></i>
+                        <span id="statWon" class="stat-num">0</span>
+                        <span class="stat-lbl">Wins</span>
+                    </div>
+                    <div class="stat-box">
+                        <i class="fa-solid fa-percent blue"></i>
+                        <span id="statWinRate" class="stat-num">0%</span>
+                        <span class="stat-lbl">Win Rate</span>
+                    </div>
+                    <div class="stat-box">
+                        <i class="fa-solid fa-fire orange"></i>
+                        <span id="statBestStreak" class="stat-num">0</span>
+                        <span class="stat-lbl">Best Streak</span>
+                    </div>
+                </div>
+
+                <h3 class="section-title"><i class="fa-solid fa-clock-rotate-left"></i> Recent Match History</h3>
+                <div class="history-table-wrapper">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>Word</th>
+                                <th>Category</th>
+                                <th>Difficulty</th>
+                                <th>Result</th>
+                                <th>Score</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyBody">
+                            <!-- Populated via API -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/canvas.js?v=2.0"></script>
+    <script src="js/app.js?v=2.0"></script>
+</body>
+</html>
