@@ -236,11 +236,9 @@ def start_game():
 
     words_cursor = list(db.words.find(query))
     if not words_cursor:
-        # Fallback: query without difficulty filter
         words_cursor = list(db.words.find({"category": category} if category != "All" else {}))
     
     if not words_cursor:
-        # Emergency fallback word
         word_obj = {
             "word": "HANGMAN",
             "category": "General",
@@ -249,9 +247,27 @@ def start_game():
             "definition": "A word guessing game where incorrect guesses draw a hanged man."
         }
     else:
-        word_obj = random.choice(words_cursor)
+        # Non-repetition per user session tracking
+        user_id_str = str(request.current_user["_id"])
+        if not hasattr(app, 'user_used_words_map'):
+            app.user_used_words_map = {}
+        if user_id_str not in app.user_used_words_map:
+            app.user_used_words_map[user_id_str] = set()
+            
+        user_set = app.user_used_words_map[user_id_str]
+        available_words = [w for w in words_cursor if w.get("word") not in user_set]
+
+        if not available_words:
+            for w in words_cursor:
+                user_set.discard(w.get("word"))
+            word_obj = random.choice(words_cursor)
+        else:
+            word_obj = random.choice(available_words)
+
+        user_set.add(word_obj.get("word"))
 
     secret_word = word_obj["word"].upper()
+
     max_attempts = DIFFICULTY_MAX_ATTEMPTS.get(difficulty, 6)
 
     # Masked representation
