@@ -1,106 +1,124 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 
 const router = express.Router();
 
-// Register
-router.post('/register', [
-  body('username').trim().isLength({ min: 3, max: 30 }),
-  body('email').isEmail().normalizeEmail(),
-  body('password').isLength({ min: 6 })
-], async (req, res) => {
+// Helper to stringify ID
+const strId = (id) => id ? id.toString() : '';
+
+// Register Endpoint
+router.post('/register', async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      const msg = errors.array().map(e => `${e.path || e.param}: ${e.msg}`).join(', ');
-      return res.status(400).json({ message: msg, errors: errors.array() });
+    const username = (req.body.username || '').trim();
+    const email = (req.body.email || '').trim().toLowerCase();
+    const password = req.body.password;
+
+    if (!username || username.length < 3) {
+      return res.status(400).json({ error: 'Username must be at least 3 characters long.' });
+    }
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ error: 'Please enter a valid email address.' });
+    }
+    if (!password || password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
     }
 
-    const { username, email, password } = req.body;
+    const existingUser = await User.findOne({
+      $or: [
+        { email: email },
+        { username: username }
+      ]
+    });
 
-    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
     if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
+      return res.status(400).json({ error: 'An account with that username or email already exists.' });
     }
 
     const user = new User({ username, email, password });
     await user.save();
 
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ userId: strId(user._id), user_id: strId(user._id), username: user.username }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
     res.status(201).json({
+      message: 'Account created successfully!',
       token,
       user: {
-        id: user._id,
+        id: strId(user._id),
         username: user.username,
         email: user.email,
-        gamesPlayed: user.gamesPlayed,
-        gamesWon: user.gamesWon
+        stats: { games_played: user.gamesPlayed || 0, games_won: user.gamesWon || 0 }
       }
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Register Error:', error);
+    res.status(500).json({ error: 'Server error during registration.', details: error.message });
   }
 });
 
-// Login
-router.post('/login', [
-  body('email').isEmail().normalizeEmail(),
-  body('password').exists()
-], async (req, res) => {
+// Login Endpoint (Supports username or email)
+router.post('/login', async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      const msg = errors.array().map(e => `${e.path || e.param}: ${e.msg}`).join(', ');
-      return res.status(400).json({ message: msg, errors: errors.array() });
+    const identifier = (req.body.username_or_email || req.body.email || req.body.username || '').trim();
+    const password = req.body.password;
+
+    if (!identifier || !password) {
+      return res.status(400).json({ error: 'Username/Email and password are required.' });
     }
 
-    const { email, password } = req.body;
+    const user = await User.findOne({
+      $or: [
+        { username: identifier },
+        { email: identifier.toLowerCase() },
+        { username_or_email: identifier }
+      ]
+    });
 
-    const user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ error: 'Invalid login credentials. User not found.' });
     }
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res.status(400).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ error: 'Invalid password. Please check your credentials.' });
     }
 
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ userId: strId(user._id), user_id: strId(user._id), username: user.username }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
     res.json({
+      message: 'Login successful!',
       token,
       user: {
-        id: user._id,
+        id: strId(user._id),
         username: user.username,
         email: user.email,
-        gamesPlayed: user.gamesPlayed,
-        gamesWon: user.gamesWon
+        stats: { games_played: user.gamesPlayed || 0, games_won: user.gamesWon || 0 }
       }
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Login Error:', error);
+    res.status(500).json({ error: 'Server error during login.', details: error.message });
   }
 });
 
-// Get user profile
-router.get('/profile', auth, async (req, res) => {
+// Get User Profile / Session Verification
+router.get(['/me', '/profile'], auth, async (req, res) => {
   try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ error: 'User not authenticated.' });
+    }
     res.json({
       user: {
-        id: req.user._id,
-        username: req.user.username,
-        email: req.user.email,
-        gamesPlayed: req.user.gamesPlayed,
-        gamesWon: req.user.gamesWon
+        id: strId(user._id),
+        username: user.username,
+        email: user.email,
+        stats: user.stats || { games_played: user.gamesPlayed || 0, games_won: user.gamesWon || 0 }
       }
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ error: 'Server error fetching user profile.' });
   }
 });
 

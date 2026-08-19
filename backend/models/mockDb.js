@@ -20,7 +20,7 @@ class MockUser {
     if (this.password && !this.password.startsWith('$2a$') && !this.password.startsWith('$2b$')) {
       this.password = await bcrypt.hash(this.password, 10);
     }
-    const index = global.inMemoryUsers.findIndex(u => u._id === this._id);
+    const index = global.inMemoryUsers.findIndex(u => u._id === this._id || u.username === this.username || u.email === this.email);
     if (index !== -1) {
       global.inMemoryUsers[index] = this;
     } else {
@@ -30,38 +30,33 @@ class MockUser {
   }
 
   async comparePassword(candidatePassword) {
-    return true; // Always allow in Demo Mode
+    if (!this.password || !candidatePassword) return false;
+    if (this.password.startsWith('$2a$') || this.password.startsWith('$2b$')) {
+      return await bcrypt.compare(candidatePassword, this.password);
+    }
+    return candidatePassword === this.password;
   }
 
   static async findOne(query) {
     if (!query) return null;
-    const { _id, email, username, $or } = query;
+    const { _id, email, username, username_or_email, $or } = query;
+    
     let found = global.inMemoryUsers.find(u => {
       if (!u) return false;
       if (_id && u._id && u._id.toString() === _id.toString()) return true;
-      if (email && u.email === email) return true;
-      if (username && u.username === username) return true;
+      if (email && u.email && u.email.toLowerCase() === email.toLowerCase()) return true;
+      if (username && u.username && u.username.toLowerCase() === username.toLowerCase()) return true;
+      if (username_or_email && (u.username.toLowerCase() === username_or_email.toLowerCase() || u.email.toLowerCase() === username_or_email.toLowerCase())) return true;
       if ($or && Array.isArray($or)) {
         return $or.some(q => {
           if (q._id && u._id && u._id.toString() === q._id.toString()) return true;
-          if (q.email && u.email === q.email) return true;
-          if (q.username && u.username === q.username) return true;
+          if (q.email && u.email && u.email.toLowerCase() === q.email.toLowerCase()) return true;
+          if (q.username && u.username && u.username.toLowerCase() === q.username.toLowerCase()) return true;
           return false;
         });
       }
       return false;
     });
-
-    // Auto-register user on login in Demo Mode if they don't exist yet
-    if (!found && email && !username && !$or && !_id) {
-      const mockUsername = email.split('@')[0] || 'Player';
-      found = new MockUser({
-        username: mockUsername,
-        email: email,
-        password: 'temporary_password'
-      });
-      await found.save();
-    }
 
     return found || null;
   }
@@ -80,22 +75,12 @@ class MockUser {
     if (!id) return makeChain(null);
 
     let user = global.inMemoryUsers.find(u => u && u._id && u._id.toString() === id.toString());
-    if (!user) {
-      // Re-create a temporary demo user on-the-fly to prevent session loss on container restart
-      user = new MockUser({
-        _id: id,
-        username: 'DemoUser',
-        email: 'demo@example.com',
-        gamesPlayed: 0,
-        gamesWon: 0
-      });
-      global.inMemoryUsers.push(user);
-    }
-    return makeChain(user);
+    return makeChain(user || null);
   }
 
   static async findByIdAndUpdate(id, update) {
-    const user = await this.findById(id);
+    const userResult = await this.findById(id);
+    const user = userResult ? await userResult.exec() : null;
     if (!user) return null;
     if (update.$inc) {
       if (update.$inc.gamesPlayed) user.gamesPlayed += update.$inc.gamesPlayed;
@@ -139,20 +124,6 @@ class MockGame {
       if (user && (!g.user || g.user.toString() !== user.toString())) return false;
       return true;
     });
-
-    if (!game && _id && user) {
-      // Re-create a temporary active game to prevent session loss
-      game = new MockGame({
-        _id: _id,
-        user: user,
-        word: 'REACT', // Fallback word
-        guessedLetters: [],
-        incorrectGuesses: 0,
-        maxIncorrectGuesses: 6,
-        status: 'active'
-      });
-      global.inMemoryGames.push(game);
-    }
     return game || null;
   }
 

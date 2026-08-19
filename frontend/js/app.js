@@ -232,19 +232,29 @@ async function handleLogin(e) {
     e.preventDefault();
     soundFX.playClick();
 
-    const identifier = document.getElementById('loginIdentifier').value;
+    const identifier = document.getElementById('loginIdentifier').value.trim();
     const password = document.getElementById('loginPassword').value;
+
+    if (!identifier || !password) {
+        showAuthAlert('Please enter your username/email and password.', 'error');
+        return;
+    }
 
     try {
         const res = await fetch(`${API_BASE}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username_or_email: identifier, password: password })
+            body: JSON.stringify({
+                username_or_email: identifier,
+                email: identifier,
+                username: identifier,
+                password: password
+            })
         });
         const data = await res.json();
 
         if (!res.ok) {
-            showAuthAlert(data.error || 'Login failed.', 'error');
+            showAuthAlert(data.error || data.message || 'Login failed. Please check credentials.', 'error');
             soundFX.playWrong();
             return;
         }
@@ -259,12 +269,13 @@ async function handleLogin(e) {
 
         setTimeout(() => {
             showGameSection();
-        }, 600);
+        }, 500);
 
     } catch (err) {
         showAuthAlert('Network error connecting to backend API.', 'error');
     }
 }
+
 
 async function handleRegister(e) {
     e.preventDefault();
